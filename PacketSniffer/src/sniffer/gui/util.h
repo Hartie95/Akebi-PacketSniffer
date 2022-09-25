@@ -8,8 +8,116 @@
 
 #include <imgui.h>
 
+#include <filesystem>
+#include <fstream>
+#include <sniffer/packet/PacketManager.h>
+
+// for open directory dialog
+#include <ShlObj_core.h>
+#include <atlbase.h>
+
+
+namespace fs = std::filesystem;
 namespace sniffer::gui
 {
+	struct ComInit
+	{
+		ComInit() { CoInitialize(nullptr); }
+		~ComInit() { CoUninitialize(); }
+	};
+	
+	class Session
+	{
+	public:
+		Session() {};
+		~Session() {};
+
+		static int showFolderSelect(wchar_t* result) {
+			ComInit com;
+			CComPtr<IFileOpenDialog> pFolderDlg;
+			pFolderDlg.CoCreateInstance(CLSID_FileOpenDialog);
+
+			FILEOPENDIALOGOPTIONS opt{};
+			pFolderDlg->GetOptions(&opt);
+			pFolderDlg->SetOptions(opt | FOS_PICKFOLDERS | FOS_PATHMUSTEXIST);
+
+			if (!SUCCEEDED(pFolderDlg->Show(nullptr))) {
+				return 1;
+			}
+
+			CComPtr<IShellItem> pSelectedItem;
+			pFolderDlg->GetResult(&pSelectedItem);
+			CComHeapPtr<wchar_t> pPath;
+			pSelectedItem->GetDisplayName(SIGDN_FILESYSPATH, &pPath);
+			wcscpy(result, pPath.m_pData);
+			return 0;
+		}
+
+		static void dump(void)
+		{
+			wchar_t pathArray[255] = { 0 };
+			if (!SUCCEEDED(showFolderSelect(pathArray))) {
+				return;
+			}
+
+
+			const auto& packets = sniffer::packet::PacketManager::GetPackets();
+
+			fs::path path(pathArray);
+			int count = 0;
+
+			// packet, packetView
+			for (const auto& packet : packets) {
+
+				auto file_name = std::to_string(++count);
+
+				std::fstream file(path.string() + '/' + file_name + ".json", std::ios::out | std::ios::binary);
+
+				if (file.is_open()) {
+					nlohmann::json j;
+					packet.to_json(j);
+
+					file << j;
+				}
+				file.close();
+			}
+
+			return;
+		}
+		
+		static void load(void)
+		{
+
+			wchar_t pathArray[255] = { 0 };
+			if (!SUCCEEDED(showFolderSelect(pathArray))) {
+				return;
+			}
+
+			fs::path path(pathArray);
+			fs::path jsonExtension(".json");
+
+			std::error_code ec;
+
+			for (const auto& entry : fs::directory_iterator(path, fs::directory_options::skip_permission_denied, ec)) {
+				if (ec) {
+					// print error
+					continue;
+				}
+
+				if (fs::is_regular_file(entry) && entry.path().extension().compare(jsonExtension) == 0) {
+					std::fstream file(entry.path());
+
+					auto j = nlohmann::json::parse(file);
+
+					sniffer::packet::Packet packet;
+					packet.from_json(j);
+
+					sniffer::packet::PacketManager::s_ReceiveQueue.push(packet.raw());
+					file.close();
+				}
+			}
+		}
+	};
 
 	void DrawScriptSelector(script::ScriptSelector* selector);
 	

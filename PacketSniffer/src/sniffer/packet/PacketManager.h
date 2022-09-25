@@ -85,7 +85,6 @@ namespace sniffer::packet
 		static inline std::map<uint64_t, std::vector<uint64_t>> s_ChildMap;
 		static inline std::map<uint64_t, uint64_t> s_UnpackedMap;
 
-		static inline SafeQueue<RawPacketData> s_ReceiveQueue;
 		static inline std::atomic<std::pair<ModifyType, RawPacketData>*> s_ModifyResponse;
 
 		static inline TEvent<const Packet*, uint64_t> s_PacketReceiveEvent;
@@ -96,6 +95,7 @@ namespace sniffer::packet
 		static inline TEvent<const Packet*> s_FavoritePacketPreRemove;
 
 	public:
+		static inline SafeQueue<RawPacketData> s_ReceiveQueue;
 
 		static inline IEvent<const Packet*, ModifyType, RawPacketData>& PacketModifiedEvent = s_PacketModifiedEvent;
 		static inline IEvent<const Packet*, uint64_t>& PacketReceiveEvent = s_PacketReceiveEvent;

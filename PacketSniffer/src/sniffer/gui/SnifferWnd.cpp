@@ -15,6 +15,7 @@
 #include <sniffer/gui/ScriptManagerWnd.h>
 
 #include <sniffer/gui/ScriptEditor.h>
+#include <sniffer/gui/util.h>
 
 namespace sniffer::gui
 {
@@ -145,6 +146,16 @@ namespace sniffer::gui
 				if (ImGui::MenuItem("Callow | Github page"))
 				{
 					util::OpenURL("https://github.com/Akebi-Group/Akebi-GC");
+				}
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Session")) {
+				if (ImGui::MenuItem("Dump")) {
+					Session::dump();
+				}
+				if (ImGui::MenuItem("Load")) {
+					Session::load();
 				}
 				ImGui::EndMenu();
 			}
